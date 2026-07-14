@@ -1,0 +1,9 @@
+# CAN dump logs (can be large / noisy, keep summarized findings in docs/can-notes.md instead)
+*.log
+
+# Go
+/src/**/*.exe
+/src/**/bin/
+
+# OS
+.DS_Store
