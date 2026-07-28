@@ -85,8 +85,8 @@ The Camaro uses GM's GMLAN protocol built on ISO 15765-2 (ISO-TP), consisting of
  └─────────────────────────────────┘
 ```
 
-| Pin | Standard Function | GM/GMLAN Specific |
-|---|---|---|
+| Pin | Standard Function | GM/GMLAN Specific | Camaro Contains Pin |
+|---|---|---|---|
 | 1 | Manufacturer discretion | SWCAN (Single Wire CAN) — 33.333 kbps |
 | 2 | SAE J1850 Bus+ | Unused on this vehicle |
 | 3 | Manufacturer discretion | Unused |
@@ -103,6 +103,9 @@ The Camaro uses GM's GMLAN protocol built on ISO 15765-2 (ISO-TP), consisting of
 | 14 | CAN Low (J2284) | HS-GMLAN CAN-L — 500 kbps |
 | 15 | L-Line ISO 9141 | Diagnostic L-Line |
 | 16 | Battery Positive (unswitched) | Always-on 12V |
+
+![OBD2 Pin Voltage Readings](images/obd2_camaro.jpeg)
+
 
 ---
 
