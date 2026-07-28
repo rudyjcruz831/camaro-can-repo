@@ -9,7 +9,7 @@ A personal project to connect a Raspberry Pi 3 to a 2012 Chevrolet Camaro 1LT vi
 - [x] Understand CAN bus architecture and protocols
 - [x] Identify OBD2 pin assignments on the physical connector
 - [x] Map wire colors on iKKEGOL OBD2 breakout cable
-- [ ] Connect Raspberry Pi + Waveshare HAT to high speed GMLAN (Phase 4)
+- [x] Connect Raspberry Pi + Waveshare HAT to high speed GMLAN (Phase 4)
 - [ ] Capture live CAN frames with candump
 - [ ] Reverse engineer SWCAN body bus (Phase 5)
 - [ ] Control door locks remotely from phone
@@ -119,8 +119,8 @@ The Camaro uses GM's GMLAN protocol built on ISO 15765-2 (ISO-TP), consisting of
 | Pin | Wire Color | Accessory Voltage | Engine On Voltage | Function | Status |
 |---|---|---|---|---|---|
 | 1 | Red/white | 1–2.55V fluctuating | Active | SWCAN | Phase 5 — keep taped |
-| 4 | Blue | 0V | 0.03V | Chassis GND | ✅ Connect to HAT GND |
-| 5 | White | 0V | 0.3V | Signal GND | ⚠️ Verify with continuity test |
+| 4 | Baby Blue | 0V | 0.03V | Chassis GND | ✅ Connect to HAT GND |
+| 5 | Orange | 0V | 0.3V | Signal GND | ⚠️ Verify with continuity test |
 | 6 | Green | 2.79V | 2.81V | CAN-H HS-GMLAN | ✅ Connect to HAT CAN-H |
 | 12 | Pink | 2.53V | 2.54V | Unknown — possible MS-GMLAN CAN-H | 🔍 Investigate Phase 4 |
 | 13 | Gray | 2.37V | 2.38V | Unknown — possible MS-GMLAN CAN-L | 🔍 Investigate Phase 4 |
@@ -131,12 +131,12 @@ The Camaro uses GM's GMLAN protocol built on ISO 15765-2 (ISO-TP), consisting of
 | Wire Color | Voltage | Notes |
 |---|---|---|
 | Yellow | 0V | Inactive — manufacturer discretion pin |
-| Orange | 0V | Inactive |
+| White | 0V | Inactive |
 | Brown | 0V off / 1–2.55V on | Active when engine running — investigate |
-| Baby blue | 0V | Inactive |
+| Baby | 0V | Inactive |
 | Purple | 0V | Inactive |
 | Black | 0V | Inactive |
-| Brown/white | 0V | Inactive |
+| Brown/white | 0V | Inactive |                                                      
 | Black/white | 0V | Inactive |
 
 ### ⚠️ Important Notes
@@ -294,6 +294,17 @@ SOF | Arbitration ID | Control | Data (0-8 bytes) | CRC | ACK | EOF
 | Transceiver | SN65HVD230 | TH8056 |
 | Protocol | Identical CAN frames | Identical CAN frames |
 
+### Important Discovery — Channel Mapping
+Physical CAN0 terminal on HAT maps to `can1` in software, not `can0`.
+Always use `can1` for the CAN0 terminal block connection.
+
+Correct config.txt interrupt mapping:
+- can0 (software) = CAN1 terminal (physical) = interrupt 23
+- can1 (software) = CAN0 terminal (physical) = interrupt 25
+
+Commands to bring up interface:
+sudo ip link set can1 up type can bitrate 500000
+candump can1
 ---
 
 ## Phase Roadmap
@@ -311,13 +322,13 @@ SOF | Arbitration ID | Control | Data (0-8 bytes) | CRC | ACK | EOF
 - CAN FD overview
 - Read: Car Hacker's Handbook Chapters 1-3
 
-### Phase 3 — OBD2 and Diagnostics 🔄 In Progress
+### Phase 3 — OBD2 and Diagnostics ✅ In Progress
 - SAE J1979 OBD2 PIDs
 - ISO 14229 UDS protocol
 - Multi-bus vehicle architecture
 - Read: Car Hacker's Handbook OBD2 chapter
 
-### Phase 4 — Hardware Build 🔄 In Progress
+### Phase 4 — Hardware Build ✅ In Progress
 - Raspberry Pi OS fresh flash
 - Waveshare HAT SPI configuration
 - SocketCAN setup
@@ -385,4 +396,9 @@ SOF | Arbitration ID | Control | Data (0-8 bytes) | CRC | ACK | EOF
 | 2026-07 | Discovered mystery pins 12/13 — possible second CAN bus |
 | 2026-07 | Ordered TH8056 SWCAN transceiver from eBay |
 | 2026-07 | Flashing fresh Raspberry Pi OS — in progress |
+| 2026-07-28 | Connected Waveshare HAT to Camaro OBD2 port |
+| 2026-07-28 | Discovered can0/can1 channels were swapped in software — CAN0 terminal maps to can1 |
+| 2026-07-28 | Successfully captured live CAN frames with candump — ~1310 frames/second at idle |
+| 2026-07-28 | Captured idle and revving log files for frame analysis |
+| 2026-07-28 | Phase 4 hardware connection confirmed working |
 
