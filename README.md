@@ -119,8 +119,8 @@ The Camaro uses GM's GMLAN protocol built on ISO 15765-2 (ISO-TP), consisting of
 | Pin | Wire Color | Accessory Voltage | Engine On Voltage | Function | Status |
 |---|---|---|---|---|---|
 | 1 | Red/white | 1–2.55V fluctuating | Active | SWCAN | Phase 5 — keep taped |
-| 4 | Blue | 0V | 0.03V | Chassis GND | ✅ Connect to HAT GND |
-| 5 | White | 0V | 0.3V | Signal GND | ⚠️ Verify with continuity test |
+| 4 | Baby Blue | 0V | 0.03V | Chassis GND | ✅ Connect to HAT GND |
+| 5 | Orange | 0V | 0.3V | Signal GND | ⚠️ Verify with continuity test |
 | 6 | Green | 2.79V | 2.81V | CAN-H HS-GMLAN | ✅ Connect to HAT CAN-H |
 | 12 | Pink | 2.53V | 2.54V | Unknown — possible MS-GMLAN CAN-H | 🔍 Investigate Phase 4 |
 | 13 | Gray | 2.37V | 2.38V | Unknown — possible MS-GMLAN CAN-L | 🔍 Investigate Phase 4 |
@@ -131,12 +131,12 @@ The Camaro uses GM's GMLAN protocol built on ISO 15765-2 (ISO-TP), consisting of
 | Wire Color | Voltage | Notes |
 |---|---|---|
 | Yellow | 0V | Inactive — manufacturer discretion pin |
-| Orange | 0V | Inactive |
+| White | 0V | Inactive |
 | Brown | 0V off / 1–2.55V on | Active when engine running — investigate |
-| Baby blue | 0V | Inactive |
+| Baby | 0V | Inactive |
 | Purple | 0V | Inactive |
 | Black | 0V | Inactive |
-| Brown/white | 0V | Inactive |
+| Brown/white | 0V | Inactive |                
 | Black/white | 0V | Inactive |
 
 ### ⚠️ Important Notes
