@@ -367,6 +367,126 @@ candump can1
 
 ---
 
+## SWCAN Frame IDs — Community Research
+
+### Source
+GMLan Bible — community reverse engineered GM SWCAN frame database
+Credit: Jesse (McJ) — tested on 2006 Holden VE SSV (GM platform)
+Note: IDs should be consistent across GM platforms but node addresses
+in 29-bit header may differ slightly on 2012 Camaro 1LT
+
+---
+
+### Door Lock Control — ARBID 0x004
+Full 29-bit frame header: 080080B0
+Data length: 2 bytes
+
+| Command | Byte 1 | Byte 2 | cansend format |
+|---|---|---|---|
+| Lock all doors | 06 | 01 | 080080B0#0601 |
+| Unlock driver only | 06 | 02 | 080080B0#0602 |
+| Unlock all doors | 06 | 03 | 080080B0#0603 |
+| Panic button | 06 | 0E | 080080B0#060E |
+
+⚠️ Must be sent on SWCAN bus (can2) at 33.333 kbps — NOT high speed GMLAN
+⚠️ Verify frame ID on your specific Camaro by sniffing SWCAN while
+   pressing door lock button before sending commands
+
+---
+
+### Ignition Key State — ARBID 0x001
+Full 29-bit frame header: 10002040
+Data length: 4 bytes
+
+| State | Bytes | Notes |
+|---|---|---|
+| Key Out | 00 00 74 77 | |
+| Key In | 00 01 74 77 | |
+| Key Accessory | 09 01 74 77 | |
+| Key Run | 0A 01 74 77 | |
+| Key Crank | 0B 01 74 77 | Engine cranking |
+| Key Off | 08 01 74 77 | |
+
+---
+
+### Remote Start — ARBID 0x002
+Full 29-bit frame header: 10004060
+Data length: 1 byte
+Command: FF
+
+⚠️ EXTREME CAUTION — engine starts even without key in run position
+⚠️ Cuts out after 500ms unless key is already in run position
+⚠️ Do not test while in gear
+⚠️ Needs further investigation before use
+⚠️ Not confirmed on 2012 Camaro 1LT
+
+---
+
+### Radio Source — ARBID 0x174
+Full 29-bit frame header: 102E8080
+Data length: 2 bytes
+
+| Source | Byte 1 | Byte 2 |
+|---|---|---|
+| AM | 04 | 02 |
+| FM1 | 06 | 02 |
+| FM2 | 08 | 02 |
+| CD | 14 | 02 |
+
+---
+
+### Steering Wheel Controls — ARBID 0x068
+Full 29-bit frame header: 100D0060
+Data length: 4 bytes
+
+| Button | Bytes |
+|---|---|
+| Mute | 20 00 00 00 |
+
+---
+
+### Key Notes on 29-bit Frame Structure
+GM SWCAN uses 29-bit extended CAN IDs not 11-bit standard IDs.
+The full 29-bit header encodes:
+- The arbitration ID (message type)
+- Source node address (who sent it)
+- Destination node address (who should receive it)
+
+When sending commands from your Pi use the full 29-bit header format.
+Example cansend command for door lock:
+```bash
+cansend can2 080080B0#0601
+```
+
+When sniffing with candump look for the last digits matching
+the arbitration ID — for door lock look for frames ending in 04
+in the arbitration ID field.
+
+---
+
+### Hardware Required for SWCAN
+- TH8056 transceiver chip — soldered on Stargazer SOIC-8 breakout ✅
+- Standalone MCP2515 module (HW-184) — ordered ⏳
+- Connected to Pi GPIO SPI1 pins — pending hardware arrival
+- OBD2 pin 1 red/white wire — currently taped off, ready to connect
+
+### SWCAN Software Setup
+```bash
+# Bring up SWCAN interface at 33.333 kbps
+sudo ip link set can2 up type can bitrate 33333
+
+# Sniff SWCAN traffic
+candump can2
+
+# Send door lock command
+cansend can2 080080B0#0601
+
+# Send door unlock command  
+cansend can2 080080B0#0602
+```
+
+---
+
 ## References and Resources
 
 | Resource | URL | Notes |
@@ -377,7 +497,7 @@ candump can1
 | Linux SocketCAN docs | kernel.org/doc/html/latest/networking/can.html | Kernel driver reference |
 | Waveshare HAT wiki | waveshare.com/wiki/2-CH_CAN_HAT | Setup guide for your specific HAT |
 | python-can docs | python-can.readthedocs.io | Python CAN library |
-| opendbc | github.com/commaai/opendbc | Open vehicle DBC files |
+| opendbc | F | Open vehicle DBC files |
 | can-utils | github.com/linux-can/can-utils | candump cansend cansniffer |
 | Car Hacker's Handbook | opengarages.org/handbook | Main project reference book |
 | Bit timing calculator | bittiming.can-wiki.info | MCP2515 CNF register calculator |
@@ -386,12 +506,16 @@ candump can1
 | Single Wire CAN Network Diagnosis -GM SWCAN | https://diag.net/msg/m1x0xyytrtjas33qio6if5ukhm | coming soon | 
 |GMLAN Bible- GM SWCAN Frame ID Database| https://carmodder.com/viewtopic.php?t=24143 | coming soon |
 | Lets Talk GMLAN - SWCAN Bus Disscussion| https://ls1tech.com/forums/pcm-diagnostics-tuning/1620295-lets-talk-gmlan-j2411-swcan-bus.html | coming soon |
+
 ---
 
 ## Project Log
 
 | Date | Milestone |
 |---|---|
+| 2026-08-06 | Found GMLan Bible SWCAN frame IDs for door lock ARBID 0x004 |
+| 2026-08-06 | Confirmed door lock payload: 0601 lock, 0602 unlock driver, 0603 unlock all |
+| 2026-08-06 | Found potential remote start frame ARBID 0x002 — needs verification |
 | 2026-07 | Started project — read TI CAN intro document |
 | 2026-07 | Studied Car Hacker's Handbook Chapters 1-3 |
 | 2026-07 | Identified all 16 OBD2 wire colors with multimeter |
