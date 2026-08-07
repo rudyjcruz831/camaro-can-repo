@@ -382,7 +382,10 @@ candump can1
 | Car Hacker's Handbook | opengarages.org/handbook | Main project reference book |
 | Bit timing calculator | bittiming.can-wiki.info | MCP2515 CNF register calculator |
 | TH8056 datasheet | melexis.com | SWCAN transceiver reference |
-
+|BCM as Gateway Module| https://www.vehicleservicepros.com/service-repair/diagnostics-and-drivability/article/21252019/when-theres-no-wake-up-call | This article talks about an issue they are having witht he communication CAN bus |
+| Single Wire CAN Network Diagnosis -GM SWCAN | https://diag.net/msg/m1x0xyytrtjas33qio6if5ukhm | coming soon | 
+|GMLAN Bible- GM SWCAN Frame ID Database| https://carmodder.com/viewtopic.php?t=24143 | coming soon |
+| Lets Talk GMLAN - SWCAN Bus Disscussion| https://ls1tech.com/forums/pcm-diagnostics-tuning/1620295-lets-talk-gmlan-j2411-swcan-bus.html | coming soon |
 ---
 
 ## Project Log
