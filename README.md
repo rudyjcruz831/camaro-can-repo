@@ -486,6 +486,103 @@ cansend can2 080080B0#0602
 ```
 
 ---
+## High Speed GMLAN Frame Analysis — 2012 Chevrolet Camaro 1LT
+
+### Capture Details
+- Interface: can1 (physical CAN0 terminal on Waveshare HAT)
+- Bitrate: 500 kbps
+- Average frame rate: ~2,300 frames per second at idle
+- Tool: candump -l can1
+
+---
+
+### Confirmed Frame IDs
+
+#### RPM — Frame 0C9
+- Bytes 2-3 contain engine RPM as a 16-bit integer
+- Scaling factor: × 0.5
+- Formula: `RPM = (byte2 << 8 | byte3) × 0.5`
+
+| Condition | Raw bytes 2-3 | Decoded RPM |
+|---|---|---|
+| Idle | 0x0640 approx | ~800 RPM |
+| 3000 RPM rev | 0x14F4 | ~2682 RPM |
+| 3000 RPM rev | 0x14D8 | ~2668 RPM |
+
+Example frame at 3000 RPM:
+
+can1 0C9#8414F40700101800
+^^^^
+bytes 2-3 = 0x14F4 = 5364 × 0.5 = 2682 RPM
+
+
+#### Coolant Temperature — Frame 18E (probable)
+- Bytes 6-7 contain a slowly rising value as engine warms up
+- Scaling factor: TBD — needs temperature correlation test
+- Values rise gradually from cold start — consistent with coolant temp behavior
+
+| Condition | Raw bytes 6-7 | Notes |
+|---|---|---|
+| Cold idle start | 0x0644 | Engine just started |
+| Warm idle | 0x0754 | After ~90 seconds running |
+
+#### ECM Heartbeat — Frame 0F1
+- Broadcasts at highest rate — 6484 times in 65 seconds (~100 Hz)
+- Byte 0 cycles through 4 states: 00, 1C, 28, 34
+- This is a synchronization frame — not useful for sensor data
+
+#### Status Frames — 0C7 and 0F9
+- Both broadcast at ~80 Hz but data never changes
+- 0C7 always: 03FE0000
+- 0F9 mostly: 00004000000000FF
+- These are likely mode or configuration status frames
+
+---
+
+### Frames Still To Identify
+- Vehicle speed — need driving capture at known speed
+- Throttle position
+- Gear position
+- Fuel level
+- Brake pressure
+
+---
+
+### Python Decoding Example
+```python
+import can
+
+bus = can.interface.Bus(channel='can1', bustype='socketcan')
+
+while True:
+    msg = bus.recv()
+    
+    # Decode RPM from frame 0C9
+    if msg.arbitration_id == 0x0C9:
+        raw = (msg.data[2] << 8) | msg.data[3]
+        rpm = raw * 0.5
+        print(f"RPM: {rpm:.0f}")
+    
+    # Decode coolant temp from frame 18E (scaling TBD)
+    if msg.arbitration_id == 0x18E:
+        raw = (msg.data[6] << 8) | msg.data[7]
+        print(f"18E raw value: {raw} (temp scaling TBD)")
+```
+
+---
+
+### Analysis Commands Used
+```bash
+# Count most frequent frame IDs
+cat candump.log | awk '{print $3}' | cut -d'#' -f1 | sort | uniq -c | sort -rn | head -30
+
+# Get unique values for specific frame ID
+cat candump.log | grep " 0C9#" | awk '{print $3}' | sort | uniq -c | sort -rn | head -10
+
+# Extract frames from specific time window
+cat candump.log | awk '{if ($1 > "(timestamp1" && $1 < "(timestamp2") print $0}' | grep " 0C9#"
+```
+---
 
 ## References and Resources
 
