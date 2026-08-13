@@ -584,6 +584,104 @@ cat candump.log | awk '{if ($1 > "(timestamp1" && $1 < "(timestamp2") print $0}'
 ```
 ---
 
+## Phase 5 — SWCAN Hardware Build Notes (HW-184 → TH8056 Bypass)
+
+*Detailed build log for the SWCAN body-bus hardware work — HW-184 module modification, TH8056 transceiver wiring plan, and Pi-side connection plan. Paste this in after the existing "Phase 5 — SWCAN Body Bus" checklist section.*
+
+### Wiring Diagram
+
+![SWCAN Wiring Diagram](images/swcan_wiring_diagram.png)
+*(hand-drawn diagram — pending, to be added)*
+
+---
+
+### HW-184 Board Identification
+
+**Board:** WWZMDiB HW-184, MCP2515 + TJA1050 module, silkscreen rev "V2139"
+
+| Reference | Component | Notes |
+|---|---|---|
+| U2 | MCP2515 | Marked "MCP2515 I/SO 23100TW", SPI CAN controller |
+| U1 | TJA1050 | Marked "NXP TJA1050 CJ JH", SOIC-8, soldered SMD (not socketed) — high-speed CAN transceiver, incompatible with SWCAN |
+| X1 | Crystal | Marked "8.000" — 8MHz oscillator |
+| J4 | SPI header | 7-pin: VCC, GND, CS, SO, SI, SCK, INT |
+| J1 | 3-pin jumper (near "POW" silkscreen) | Suspected power/logic-level select — **not independently confirmed**, no manual found for this board |
+| J3 | 2-pin jumper (next to "L"/"H" silkscreen) | 120Ω termination resistor jumper — remove for SWCAN use |
+| — | Blue 2-pin screw terminal | Standard CAN H/L output — not used for the SWCAN bypass |
+
+### TJA1050 Removal — ✅ Complete
+
+Standard TJA1050 SOIC-8 pinout (confirmed against [NXP's official datasheet](https://www.nxp.com/docs/en/data-sheet/TJA1050.pdf)):
+
+| Pin | Signal |
+|---|---|
+| 1 | TXD |
+| 2 | GND |
+| 3 | VCC |
+| 4 | RXD |
+| 5 | VREF |
+| 6 | CANL |
+| 7 | CANH |
+| 8 | S |
+
+- Chip text read right-side-up in board photo → standard orientation → pin 1 = top-left leg, pin 4 = bottom-left leg (4 visible legs on chip's left edge).
+- Removed via hot air (WEP 882D station): **330–350°C / 625–660°F**, low airflow setting, small/narrow nozzle to avoid heating nearby R1/R2/C1/C5.
+- ⚠️ Learned the hard way: hot air spread far enough to start softening the plastic on the blue H/L screw terminal a few mm away. Fix was shielding nearby components (foil/Kapton) and keeping the nozzle closer + narrower rather than farther + wider.
+- Full chip removed (not just lifted) to avoid the TxD/RxD nets being driven by two active outputs (TJA1050 + TH8056) simultaneously.
+- Result: two clean exposed pads where U1 pin 1 (TXD) and pin 4 (RXD) were — these wire straight to MCP2515's TXCAN/RXCAN.
+
+### TH8056 Pin Connections — 📋 Planned (chip mounted on Stargazer SOIC-8 breakout + green prototype PCB; resistor/cap network not yet soldered)
+
+| Pin | Name | Connects to |
+|---|---|---|
+| 1 | TxD | HW-184 exposed TXD pad |
+| 2 | MODE0 | 3.3V (Pi) — no component |
+| 3 | MODE1 | 3.3V (Pi) — no component |
+| 4 | RxD | HW-184 exposed RXD pad **+** 2.7kΩ pull-up resistor to 3.3V |
+| 5 | VBAT | 1kΩ resistor in series → OBD2 pin 16 (12V) **+** 100nF cap from this junction to GND |
+| 6 | LOAD | 5kΩ + 1kΩ resistors in series → GND (≈6kΩ total, per GMW3089 bus-loading spec) |
+| 7 | CANH | OBD2 pin 1 (red/white wire) — the single wire into the car |
+| 8 | GND | Common ground |
+
+**Parts needed:** 4 resistors (2.7kΩ, 5kΩ, 1kΩ, 1kΩ) + 1 capacitor (100nF), sourced from ELEGOO Electronic Fun Kit.
+
+### Pi → HW-184 SPI1 Wiring Plan — 📋 Planned
+
+| Pi physical pin | Signal | HW-184 J4 pin |
+|---|---|---|
+| Pin 2 | 5V | VCC |
+| Pin 6 | GND | GND |
+| Pin 38 (GPIO20) | MOSI | SI |
+| Pin 35 (GPIO19) | MISO | SO |
+| Pin 40 (GPIO21) | SCK | SCK |
+| Pin 36 (GPIO16) | CS | CS |
+| Pin 37 (GPIO26) | INT | INT |
+| Pin 1 (3.3V) | Logic ref | → TH8056 pins 2 & 3, and RxD pull-up (not HW-184 directly) |
+
+config.txt (already documented above in Phase 5 software section):
+```
+dtoverlay=spi1-1cs
+dtoverlay=mcp2515,spi1-0,oscillator=8000000,interrupt=26
+```
+
+### Waveshare HAT — Compatibility Check for Adding HW-184
+
+- Waveshare 2-CH CAN HAT uses **SPI0** (GPIO 7, 8, 9, 10, 11, 22/23, 24/25) — confirmed via [Waveshare's own wiki](https://www.waveshare.com/wiki/2-CH_CAN_HAT). No pin conflict with HW-184's planned **SPI1** pins (GPIO 16, 19, 20, 21, 26).
+- Confirmed via board photo: the HAT has a full 40-pin GPIO **passthrough/stacking header** — every Pi GPIO pin, including the SPI1 set, is physically accessible on top of the installed HAT.
+- HAT also has a side single-row breakout header (INT1/INT0/CS1/CS0/SCK/MOSI/MISO/GND/5V) — this exposes **SPI0** (the HAT's own two channels) plus power; convenient for grabbing 5V/GND but not usable for HW-184's SPI1 signal lines.
+- **PWR jumper (3V3 / VIO / 5V):** sets the logic-level reference for the HAT's SPI signals. Confirmed via Waveshare wiki: *"Onboard voltage translator, select 3.3V/5V operating voltage by jumper"* and *"we need to set the VIO of 2-CH CAN HAT to 3.3V"* for Raspberry Pi use.
+  - Verified in person: jumper is bridging **3V3–VIO**, which is the correct setting (Pi GPIO is 3.3V logic, not 5V tolerant).
+- **Recommended physical method for the new SPI1 wires:** a Raspberry Pi GPIO screw-terminal breakout board (plugs onto the passthrough header, no soldering) for the 5 SPI1 signal pins, since the passthrough pins are small and closely spaced. Plain female-to-female jumper wires can connect HW-184's J4 header directly (it's already a male pin header) — no soldering needed there either.
+
+### Power Domains — Don't Cross These
+
+Two separate, unrelated supplies feed into this circuit:
+1. **3.3V logic reference** (from Pi) → TH8056 MODE0, MODE1, RxD pull-up. Tells the chip what voltage counts as digital HIGH.
+2. **12V raw battery** (from OBD2 pin 16, through a 1kΩ resistor) → TH8056 VBAT. Actually powers the chip and lets it drive the SWCAN bus.
+
+All grounds (Pi, HW-184, TH8056 pin 8, OBD2 pins 4 & 5) tie to one common ground rail.
+
+
 ## References and Resources
 
 | Resource | URL | Notes |
@@ -603,6 +701,12 @@ cat candump.log | awk '{if ($1 > "(timestamp1" && $1 < "(timestamp2") print $0}'
 | Single Wire CAN Network Diagnosis -GM SWCAN | https://diag.net/msg/m1x0xyytrtjas33qio6if5ukhm | coming soon | 
 |GMLAN Bible- GM SWCAN Frame ID Database| https://carmodder.com/viewtopic.php?t=24143 | coming soon |
 | Lets Talk GMLAN - SWCAN Bus Disscussion| https://ls1tech.com/forums/pcm-diagnostics-tuning/1620295-lets-talk-gmlan-j2411-swcan-bus.html | coming soon |
+| TJA1050 datasheet (NXP) | https://www.nxp.com/docs/en/data-sheet/TJA1050.pdf | |
+| 2-CH CAN HAT wiki (Waveshare) | https://www.waveshare.com/wiki/2-CH_CAN_HAT | coming soon |
+| TH8056 datasheet (Melexis) | melexis.com — see main hardware doc | coming soon |
+| SPI protocol overview | https://learn.sparkfun.com/tutorials/serial-peripheral-interface-spi/all | coming soon |
+| Logic levels overview | https://learn.sparkfun.com/tutorials/logic-levels/all | coming soon |
+
 
 ---
 
@@ -610,6 +714,11 @@ cat candump.log | awk '{if ($1 > "(timestamp1" && $1 < "(timestamp2") print $0}'
 
 | Date | Milestone |
 |---|---|
+| 2026-08-13 | Identified HW-184 board layout via photo — U2=MCP2515, U1=TJA1050, X1=8MHz crystal, J4 SPI header, J1 (unconfirmed jumper), J3 (termination jumper) |
+| 2026-08-13 | Confirmed TJA1050 pinout against NXP datasheet — pin 1 TXD, pin 4 RXD identified as bypass points |
+| 2026-08-13 | Desoldered U1 (TJA1050) from HW-184 using WEP 882D hot air station (330–350°C, low airflow) — exposed clean TXD/RXD pads |
+| 2026-08-13 | Confirmed Waveshare HAT has 40-pin GPIO passthrough header + verified PWR jumper is correctly set to 3.3V (3V3–VIO bridged) |
+| 2026-08-13 | Finalized full wiring plan: Pi → HW-184 (SPI1) → TH8056 → OBD2 pin 1, with separate 3.3V logic and 12V VBAT supplies |
 | 2026-08-06 | Found GMLan Bible SWCAN frame IDs for door lock ARBID 0x004 |
 | 2026-08-06 | Confirmed door lock payload: 0601 lock, 0602 unlock driver, 0603 unlock all |
 | 2026-08-06 | Found potential remote start frame ARBID 0x002 — needs verification |
@@ -618,11 +727,10 @@ cat candump.log | awk '{if ($1 > "(timestamp1" && $1 < "(timestamp2") print $0}'
 | 2026-07 | Identified all 16 OBD2 wire colors with multimeter |
 | 2026-07 | Confirmed CAN-H (green) and CAN-L (green/white) |
 | 2026-07 | Discovered mystery pins 12/13 — possible second CAN bus |
-| 2026-07 | Ordered TH8056 SWCAN transceiver from eBay |
-| 2026-07 | Flashing fresh Raspberry Pi OS — in progress |
+| 2026-07-29 | Ordered TH8056 SWCAN transceiver from eBay |
+| 2026-07-28 | Flashing fresh Raspberry Pi OS — in progress |
 | 2026-07-28 | Connected Waveshare HAT to Camaro OBD2 port |
 | 2026-07-28 | Discovered can0/can1 channels were swapped in software — CAN0 terminal maps to can1 |
 | 2026-07-28 | Successfully captured live CAN frames with candump — ~1310 frames/second at idle |
 | 2026-07-28 | Captured idle and revving log files for frame analysis |
 | 2026-07-28 | Phase 4 hardware connection confirmed working |
-
