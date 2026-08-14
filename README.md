@@ -590,7 +590,7 @@ cat candump.log | awk '{if ($1 > "(timestamp1" && $1 < "(timestamp2") print $0}'
 
 ### Wiring Diagram
 
-![SWCAN Wiring Diagram](images/swcan_wiring_diagram.png)
+![SWCAN Wiring Diagram](images/diagram.jpeg)
 *(hand-drawn diagram — pending, to be added)*
 
 ---
